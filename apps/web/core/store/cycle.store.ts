@@ -11,6 +11,7 @@ import { computedFn } from "mobx-utils";
 // types
 import type {
   ICycle,
+  IWorkspaceActiveCyclesResponse,
   TCyclePlotType,
   TProgressSnapshot,
   TCycleEstimateDistribution,
@@ -65,6 +66,11 @@ export interface ICycleStore {
   setEstimateType: (cycleId: string, estimateType: TCycleEstimateType) => void;
   // fetch
   fetchWorkspaceCycles: (workspaceSlug: string) => Promise<ICycle[]>;
+  fetchWorkspaceActiveCycles: (
+    workspaceSlug: string,
+    cursor: string,
+    per_page: number
+  ) => Promise<IWorkspaceActiveCyclesResponse>;
   fetchAllCycles: (workspaceSlug: string, projectId: string) => Promise<undefined | ICycle[]>;
   fetchActiveCycle: (workspaceSlug: string, projectId: string) => Promise<undefined | ICycle[]>;
   fetchArchivedCycles: (workspaceSlug: string, projectId: string) => Promise<undefined | ICycle[]>;
@@ -134,6 +140,7 @@ export class CycleStore implements ICycleStore {
       // actions
       setEstimateType: action,
       fetchWorkspaceCycles: action,
+      fetchWorkspaceActiveCycles: action,
       fetchAllCycles: action,
       fetchActiveCycle: action,
       fetchArchivedCycles: action,
@@ -406,6 +413,23 @@ export class CycleStore implements ICycleStore {
     });
 
   /**
+   * @description fetches active cycles across all projects in a workspace
+   * @param workspaceSlug
+   * @param cursor
+   * @param per_page
+   * @returns
+   */
+  fetchWorkspaceActiveCycles = async (workspaceSlug: string, cursor: string, per_page: number) =>
+    await this.cycleService.workspaceActiveCycles(workspaceSlug, cursor, per_page).then((response) => {
+      runInAction(() => {
+        response.results.forEach((cycle) => {
+          set(this.cycleMap, [cycle.id], { ...this.cycleMap[cycle.id], ...cycle });
+        });
+      });
+      return response;
+    });
+
+  /**
    * @description fetches all cycles for a project
    * @param workspaceSlug
    * @param projectId
@@ -624,6 +648,7 @@ export class CycleStore implements ICycleStore {
         delete this.activeCycleIdMap[cycleId];
         if (this.rootStore.favorite.entityMap[cycleId]) this.rootStore.favorite.removeFavoriteFromStore(cycleId);
       });
+      return;
     });
 
   /**
@@ -695,6 +720,7 @@ export class CycleStore implements ICycleStore {
           set(this.cycleMap, [cycleId, "archived_at"], response.archived_at);
           if (this.rootStore.favorite.entityMap[cycleId]) this.rootStore.favorite.removeFavoriteFromStore(cycleId);
         });
+        return;
       })
       .catch((error) => {
         console.error("Failed to archive cycle in cycle store", error);
@@ -717,6 +743,7 @@ export class CycleStore implements ICycleStore {
         runInAction(() => {
           set(this.cycleMap, [cycleId, "archived_at"], null);
         });
+        return;
       })
       .catch((error) => {
         console.error("Failed to restore cycle in cycle store", error);

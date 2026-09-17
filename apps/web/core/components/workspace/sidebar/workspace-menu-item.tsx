@@ -66,9 +66,11 @@ export const SidebarWorkspaceMenuItem = observer(function SidebarWorkspaceMenuIt
           />
           <p className="text-13 leading-5 font-medium">{t(item.labelTranslationKey)}</p>
         </div>
-        <div className="flex-shrink-0">
-          <UpgradeBadge />
-        </div>
+        {item.key === "active-cycles" && (
+          <div className="flex-shrink-0">
+            <UpgradeBadge />
+          </div>
+        )}
       </SidebarNavItem>
     </Link>
   );

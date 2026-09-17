@@ -15,7 +15,7 @@ from .draft import (
     DraftIssueModule,
     DraftIssueCycle,
 )
-from .estimate import Estimate, EstimatePoint
+from .estimate import Estimate, EstimatePoint, EstimateType
 from .exporter import ExporterHistory
 from .importer import Importer
 from .intake import Intake, IntakeIssue

@@ -5,14 +5,16 @@
  */
 
 import { observer } from "mobx-react";
+import { useParams } from "next/navigation";
 // components
 import { PageHead } from "@/components/core/page-title";
 // hooks
 import { useWorkspace } from "@/hooks/store/use-workspace";
 // local imports
-import { WorkspaceActiveCyclesUpgrade } from "@/components/active-cycles/workspace-active-cycles-upgrade";
+import { WorkspaceActiveCyclesList } from "@/components/active-cycles/workspace-active-cycles-list";
 
 function WorkspaceActiveCyclesPage() {
+  const { workspaceSlug } = useParams();
   const { currentWorkspace } = useWorkspace();
   // derived values
   const pageTitle = currentWorkspace?.name ? `${currentWorkspace?.name} - Active Cycles` : undefined;
@@ -20,7 +22,7 @@ function WorkspaceActiveCyclesPage() {
   return (
     <>
       <PageHead title={pageTitle} />
-      <WorkspaceActiveCyclesUpgrade />
+      <WorkspaceActiveCyclesList workspaceSlug={workspaceSlug?.toString() ?? ""} />
     </>
   );
 }

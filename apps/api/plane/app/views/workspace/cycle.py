@@ -4,6 +4,7 @@
 
 # Django imports
 from django.db.models import Q, Count
+from django.utils import timezone
 
 # Third party modules
 from rest_framework import status
@@ -107,3 +108,103 @@ class WorkspaceCyclesEndpoint(BaseAPIView):
         )
         serializer = CycleSerializer(cycles, many=True).data
         return Response(serializer, status=status.HTTP_200_OK)
+
+
+class WorkspaceActiveCyclesEndpoint(BaseAPIView):
+    permission_classes = [WorkspaceViewerPermission]
+
+    def get(self, request, slug):
+        current_time = timezone.now()
+        cycles = (
+            Cycle.objects.filter(
+                workspace__slug=slug,
+                project__project_projectmember__member=request.user,
+                project__project_projectmember__is_active=True,
+                project__archived_at__isnull=True,
+                archived_at__isnull=True,
+                start_date__lte=current_time,
+                end_date__gte=current_time,
+            )
+            .select_related("project")
+            .select_related("workspace")
+            .select_related("owned_by")
+            .annotate(
+                total_issues=Count(
+                    "issue_cycle",
+                    filter=Q(
+                        issue_cycle__issue__archived_at__isnull=True,
+                        issue_cycle__issue__is_draft=False,
+                        issue_cycle__deleted_at__isnull=True,
+                        issue_cycle__issue__deleted_at__isnull=True,
+                    ),
+                )
+            )
+            .annotate(
+                completed_issues=Count(
+                    "issue_cycle__issue__state__group",
+                    filter=Q(
+                        issue_cycle__issue__state__group="completed",
+                        issue_cycle__issue__archived_at__isnull=True,
+                        issue_cycle__issue__is_draft=False,
+                        issue_cycle__issue__deleted_at__isnull=True,
+                        issue_cycle__deleted_at__isnull=True,
+                    ),
+                )
+            )
+            .annotate(
+                cancelled_issues=Count(
+                    "issue_cycle__issue__state__group",
+                    filter=Q(
+                        issue_cycle__issue__state__group="cancelled",
+                        issue_cycle__issue__archived_at__isnull=True,
+                        issue_cycle__issue__is_draft=False,
+                        issue_cycle__issue__deleted_at__isnull=True,
+                        issue_cycle__deleted_at__isnull=True,
+                    ),
+                )
+            )
+            .annotate(
+                started_issues=Count(
+                    "issue_cycle__issue__state__group",
+                    filter=Q(
+                        issue_cycle__issue__state__group="started",
+                        issue_cycle__issue__archived_at__isnull=True,
+                        issue_cycle__issue__is_draft=False,
+                        issue_cycle__issue__deleted_at__isnull=True,
+                        issue_cycle__deleted_at__isnull=True,
+                    ),
+                )
+            )
+            .annotate(
+                unstarted_issues=Count(
+                    "issue_cycle__issue__state__group",
+                    filter=Q(
+                        issue_cycle__issue__state__group="unstarted",
+                        issue_cycle__issue__archived_at__isnull=True,
+                        issue_cycle__issue__is_draft=False,
+                        issue_cycle__issue__deleted_at__isnull=True,
+                        issue_cycle__deleted_at__isnull=True,
+                    ),
+                )
+            )
+            .annotate(
+                backlog_issues=Count(
+                    "issue_cycle__issue__state__group",
+                    filter=Q(
+                        issue_cycle__issue__state__group="backlog",
+                        issue_cycle__issue__archived_at__isnull=True,
+                        issue_cycle__issue__is_draft=False,
+                        issue_cycle__issue__deleted_at__isnull=True,
+                        issue_cycle__deleted_at__isnull=True,
+                    ),
+                )
+            )
+            .order_by("-created_at")
+            .distinct()
+        )
+
+        return self.paginate(
+            request=request,
+            queryset=cycles,
+            on_results=lambda cycles: CycleSerializer(cycles, many=True).data,
+        )
